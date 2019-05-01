@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- by  xyLi v2.0 -->
+<!-- by  xyLi v2.1 -->
 <html>
 
 <head>
@@ -11,8 +11,9 @@
   <label>快捷鍵：<input id='key' type="text"></label>
   <input id='fileChoose' type="file" accept="audio/*,video/*" />
   <label>初始音量：<input type="number" id='vol' min="0" max="100" value="100"></label>
-  <label><input id='editorMode' type="checkbox" checked>編輯模式</label>
-  <p>快捷鍵 為播放，空白鍵為停止</p>
+  <label><input id='editorMode' type="checkbox" checked>編輯模式(要快捷播音樂請取消勾選)</label>
+  <h4>快捷鍵為播放，空白鍵為停止，減號為單獨音樂控制模式</h4>
+  <h4 style="color:red;" id='oneKeyLock'></h4>
   <div id='player'>
   </div>
   <p>使用說明：先輸入快捷鍵字元，再選取音樂，即可匯入快捷撥放清單，請將編輯模式取消即可使用快捷鍵撥放<br>
@@ -107,28 +108,51 @@
     })();
 
     var dataJson = {
-      create : function() {
-        $('#jsonArea').val( JSON.stringify( controlList, null, 2 ) ) ;
+      create: function () {
+        let outputList = [];
+        for (let i = 0; i < controlList.length; i++) {
+          if (controlList[i].key != '--')
+            outputList.push(controlList[i]);
+        } // for
+
+        $('#jsonArea').val(JSON.stringify(outputList, null, 2));
       },
-      load : function() {
-        $( '#player' ).html('');
-        controlList = [] ;
-        inputList = JSON.parse( $('#jsonArea').val() ) ;
+      load: function () {
+        $('#player').html('');
+        controlList = [];
+        let inputList = JSON.parse($('#jsonArea').val());
         for (let i = 0; i < inputList.length; i++) {
-          addAudio(inputList[i].name, inputList[i].key,inputList[i].name, inputList[i].vol);
+          addAudio(inputList[i].name, inputList[i].key, inputList[i].name, inputList[i].vol);
         } // for
       },
-    } ;
+    };
 
+    var oneKeyLock = false;
     $(document).ready(function () {
       $("body").keypress(e => {
         if (!$('#editorMode').prop("checked")) {
           var keyChar = String.fromCharCode(e.which).toUpperCase();
+          if (keyChar == '-') {
+            oneKeyLock = !oneKeyLock;
+            $('#oneKeyLock').text(oneKeyLock ? '目前為單獨音樂控制模式(按下 - 減號解除)' : '');
+          } // if
           controlList.forEach(val => {
             if (val.key == keyChar) {
-              document.getElementById(val.id).load();
-              document.getElementById(val.id).volume = val.vol / 100 ;
-              document.getElementById(val.id).play();
+              if (!oneKeyLock) {
+                document.getElementById(val.id).load();
+                document.getElementById(val.id).volume = val.vol / 100;
+                document.getElementById(val.id).play();
+              } // if
+              else {
+                if (document.getElementById(val.id) && !document.getElementById(val.id).paused) {
+                  document.getElementById(val.id).pause();
+                } // if
+                else {
+                  document.getElementById(val.id).load();
+                  document.getElementById(val.id).volume = val.vol / 100;
+                  document.getElementById(val.id).play();
+                } // else
+              } // else if
             } // if
             else if (' ' == keyChar && document.getElementById(val.id) && !document.getElementById(val.id)
               .paused)

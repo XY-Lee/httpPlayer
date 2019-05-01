@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<!-- by  xyLi v2.0 -->
+<html>
+
+<head>
+
+  <script src='./jquery-3.4.0.min.js'></script>
+</head>
+
+<body>
+  <label>快捷鍵：<input id='key' type="text"></label>
+  <input id='fileChoose' type="file" accept="audio/*,video/*" />
+  <label>初始音量：<input type="number" id='vol' min="0" max="100" value="100"></label>
+  <label><input id='editorMode' type="checkbox" checked>編輯模式</label>
+  <p>快捷鍵 為播放，空白鍵為停止</p>
+  <div id='player'>
+  </div>
+  <p>使用說明：先輸入快捷鍵字元，再選取音樂，即可匯入快捷撥放清單，請將編輯模式取消即可使用快捷鍵撥放<br>
+    ※記得需要切換至英文輸入法<br>
+    ※取消編輯模式或點選任何東西後，切記要點選空白處，以免發生 focus 在剛剛按東西上，發生錯誤<br>
+    ※請使用 chrome 開啟<br>
+    →需要保存時，請點選產生json，將內容物複製存起來<br>
+    →載入時將先前存的字串直接貼上<br>
+    →音樂檔案請放在跟index.html相同目錄底下<br>
+  </p>
+
+  <button onclick="dataJson.create();">產生json</button>
+  <button onclick="dataJson.load();">載入json</button>
+  <br>
+  <textarea id="jsonArea" cols="30" rows="10"></textarea>
+
+  <script>
+    var controlList = [];
+
+    function addAudio(src, key, name, vol) {
+      var audio = $('<audio controls>').attr('id', key);
+      audio.append($('<source>').attr('src', src).attr('type', 'audio/mpeg'));
+      var p = $('<p id = "p' + key + '">' + key + " - " + name + '</p>');
+      p.append('<button onclick = "removeAudio(\'' + key + '\')">移除</button>');
+      $('#player').append(p);
+      $('#player').append(audio);
+      controlList.push({
+        id: key,
+        key: key,
+        name: name,
+        vol: vol
+      });
+    } // addAudio() 
+
+    function removeAudio(key) {
+      $('#' + key).remove();
+      $('#p' + key).remove();
+      for (let i = 0; i < controlList.length; i++) {
+        if (controlList[i].key == key) {
+          controlList[i].key = '--';
+          controlList[i].id = '--';
+          return;
+        } // if
+      } // for
+    } // removeAudio()
+
+    (function localFileVideoPlayer() {
+      'use strict'
+      var URL = window.URL || window.webkitURL;
+      var playSelectedFile = function (event) {
+
+
+        new Promise((reslove, reject) => {
+
+          if (!$('#key').val()) {
+            reject('請輸入快捷鍵字元');
+            return;
+          } // if
+          else if ($('#key').val().length > 1) {
+            reject('請輸入一個字元');
+            return;
+          } // if
+
+          for (let i = 0; i < controlList.length; i++) {
+            if (controlList[i].key == $('#key').val().toUpperCase()) {
+              reject('快捷鍵重複');
+              return;
+            } // if
+          } // for
+
+          if ($('#vol').val() > 100)
+            $('#vol').val('100');
+          else if ($('#vol').val() < 0)
+            $('#vol').val('0')
+
+          var file = this.files[0];
+          var fileURL = URL.createObjectURL(file)
+          addAudio(fileURL, $('#key').val().toUpperCase().trim(), file.name, $('#vol').val());
+          $('#fileChoose').val('');
+          $('#key').val('');
+          $('#vol').val('100');
+        }).catch(err => {
+          alert(err);
+          $('#fileChoose').val('');
+          $('#key').val('');
+          $('#vol').val('100');
+        });
+
+      } // playSelectedFile()
+      var inputNode = document.querySelector('input[id=fileChoose]')
+      inputNode.addEventListener('change', playSelectedFile, false)
+    })();
+
+    var dataJson = {
+      create : function() {
+        $('#jsonArea').val( JSON.stringify( controlList, null, 2 ) ) ;
+      },
+      load : function() {
+        $( '#player' ).html('');
+        controlList = [] ;
+        inputList = JSON.parse( $('#jsonArea').val() ) ;
+        for (let i = 0; i < inputList.length; i++) {
+          addAudio(inputList[i].name, inputList[i].key,inputList[i].name, inputList[i].vol);
+        } // for
+      },
+    } ;
+
+    $(document).ready(function () {
+      $("body").keypress(e => {
+        if (!$('#editorMode').prop("checked")) {
+          var keyChar = String.fromCharCode(e.which).toUpperCase();
+          controlList.forEach(val => {
+            if (val.key == keyChar) {
+              document.getElementById(val.id).load();
+              document.getElementById(val.id).volume = val.vol / 100 ;
+              document.getElementById(val.id).play();
+            } // if
+            else if (' ' == keyChar && document.getElementById(val.id) && !document.getElementById(val.id)
+              .paused)
+              document.getElementById(val.id).pause();
+          })
+        } // if
+      });
+    });
+  </script>
+
+</body>
+
+</html>
